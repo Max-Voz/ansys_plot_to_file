@@ -1,9 +1,10 @@
+from tkinter.filedialog import askopenfilename
+
 import matplotlib.pyplot as plt
 
 import xlwt
 
-file_name = 'Q_175_plot_temp'
-
+file_name = askopenfilename()
 
 def plot(a, b):
     plt.title(f'{file_name.split("_")[-1]} = f(coordinate)')
@@ -37,7 +38,7 @@ with open(f'{file_name}', 'r') as file:
                 break
 
 workbook = xlwt.Workbook()
-worksheet = workbook.add_sheet(f'{file_name}')
+worksheet = workbook.add_sheet(f'{file_name.split("/")[-1]}_out')
 
 # write output data to xls
 worksheet.write(0, 0, data[1].split('"')[1].strip('"'))
@@ -51,7 +52,7 @@ for i, line in enumerate(data_out):
     y_axis_data.append(float(line.split('\t')[1])-273.15)
 
 # write raw data to second sheet of xls
-worksheet2 = workbook.add_sheet(f'{file_name}_raw')
+worksheet2 = workbook.add_sheet(f'{file_name.split("/")[-1]}_raw')
 worksheet2.write(0, 0, data[1].split('"')[1].strip('"'))
 worksheet2.write(0, 1, data[1].split('"')[3].strip('"'))
 for i, line in enumerate(data):
