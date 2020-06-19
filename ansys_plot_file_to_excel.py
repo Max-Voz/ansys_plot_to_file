@@ -45,11 +45,18 @@ worksheet.write(0, 0, data[1].split('"')[1].strip('"'))
 worksheet.write(0, 1, data[1].split('"')[3].strip('"'))
 x_axis_data = []
 y_axis_data = []
+
+# correction to make C from K if needed
+if 'temp' in file_name:
+    correction = 273.15
+else:
+    correction = 0
+
 for i, line in enumerate(data_out):
     worksheet.write(i + 2, 0, float(line.split('\t')[0]))
     x_axis_data.append(float(line.split('\t')[0]))
-    worksheet.write(i + 2, 1, float(line.split('\t')[1]) - 273.15)
-    y_axis_data.append(float(line.split('\t')[1]) - 273.15)
+    worksheet.write(i + 2, 1, float(line.split('\t')[1]) - correction)
+    y_axis_data.append(float(line.split('\t')[1]) - correction)
 
 # write raw data to second sheet of xls
 worksheet2 = workbook.add_sheet(f'{file_name.split("/")[-1]}_raw')
