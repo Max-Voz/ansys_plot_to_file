@@ -47,7 +47,7 @@ x_axis_data = []
 y_axis_data = []
 
 # correction to make C from K if needed
-if 'temp' in file_name:
+if 'temp' in file_name.lower():
     correction = 273.15
 else:
     correction = 0
