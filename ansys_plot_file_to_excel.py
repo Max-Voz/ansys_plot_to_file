@@ -42,12 +42,10 @@ def obtain_data(file_name: str) -> Dict[str, Union[List[str], str, float]]:
         }
 
 
-
-
 class App:
 
     def __init__(self) -> None:
-        self.root = tkinter.Tk()
+        self.root = tkinter.Tk(className='ansys to excel')
         self.font = tkfont.Font(family='Arial', size=14, weight='bold')
         self.root.rowconfigure((0, 1), weight=1)
         self.root.columnconfigure((0, 1), weight=1)
