@@ -91,7 +91,7 @@ class App:
             for index, line in enumerate(file_data['data_out']):
                 worksheet.write(
                     index + 2, 0,
-                    float(line.split('\t')[0])
+                    float(line.split('\t')[0]) * 1000 + 60
                 )
                 worksheet.write(
                     index + 2, 1,
@@ -140,7 +140,7 @@ class App:
         plot_data: Dict = obtain_data(file_name)
         plt.title(
             f'{file_name.split("/")[-1].replace("_", " ")} = f(coordinate)')
-        plt.xlabel(f'Coordinate, m')
+        plt.xlabel(f'Coordinate, mm')
         if plot_data['correction'] == 0:
             plt.ylabel('Velocity, m/s')
             if not self.current_plot:
@@ -161,7 +161,7 @@ class App:
         y_axis_data: List[float] = []
         for line in plot_data['data_out']:
             x_axis_data.append(
-                float(line.split('\t')[0])
+                float(line.split('\t')[0]) * 1000 + 60
             )
             y_axis_data.append(
                 float(line.split('\t')[1]) - plot_data['correction']
