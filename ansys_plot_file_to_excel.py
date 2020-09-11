@@ -1,79 +1,165 @@
-from tkinter.filedialog import askopenfilename
-
 import matplotlib.pyplot as plt
-
+import tkinter
 import xlwt
+from functools import partial
+from tkinter import font as tkfont
+from tkinter.filedialog import askopenfilenames, asksaveasfilename
+from typing import Dict, List, Optional, Tuple, Union
 
-file_name = askopenfilename()
+ico_open = u"\U0001F4C2"
+ico_save = u"\U0001F4BE"
+ico_exit = u"\U0001F6AA"
+ico_chart = u"\U0001F4C8"
 
 
-def plot(a, b):
-    plt.title(f'{file_name.split("_")[-1]} = f(coordinate)')
-    plt.xlabel(f'{file_name.split("_")[-1]}')
-    plt.ylabel('temperature')
-    # plt.legend('x = y^2; x = y')
+def obtain_data(file_name: str) -> Dict[str, Union[List[str], str, float]]:
+    with open(f'{file_name}', 'r') as file:
+        data: List[str] = file.readlines()
+        data_out: List[str] = []
+        for index, line in enumerate(data):
+            if index > 4:
+                if line.split('\t')[0] == '0.06':
+                    data_out.append(line)
+                    break
+        for index, line in enumerate(data):
+            if index > 4:
+                if line.split('\t')[0] != '-0.06':
+                    if float(line.split('\t')[0]) < \
+                            float(data_out[-1].split('\t')[0]):
+                        data_out.append(line)
+                else:
+                    data_out.append(line)
+                    break
+        if 'temp' in file_name.lower():
+            correction = 273.15
+        else:
+            correction = 0
+        return {
+            'data_out': data_out,
+            'coord_name': data[1].split('"')[1].strip('"'),
+            'value_name': data[1].split('"')[3].strip('"'),
+            'correction': correction
+        }
+
+
+def plot_file(file_name: str) -> None:
+    plot_data: Dict = obtain_data(file_name)
+    plt.title(f'{file_name.split("/")[-1]} = f(coordinate)')
+    plt.xlabel(f'Coordinate, m')
+    if plot_data['correction'] == 0:
+        plt.ylabel('Velocity, m/s')
+    else:
+        plt.ylabel('Temperature, oC')
     plt.grid()
     plt.minorticks_on()
-    plt.plot(a, b)
+    x_axis_data: List[float] = []
+    y_axis_data: List[float] = []
+    for line in plot_data['data_out']:
+        x_axis_data.append(
+            float(line.split('\t')[0])
+        )
+        y_axis_data.append(
+            float(line.split('\t')[1]) - plot_data['correction']
+        )
+    plt.plot(x_axis_data, y_axis_data)
     plt.show()
 
 
-with open(f'{file_name}', 'r') as file:
-    data = file.readlines()
-    data_out = []
-    for i, line in enumerate(data):
-        if i > 4:
-            if line.split('\t')[0] == '0.06':
-                data_out.append(line)
-                break
+class App:
 
-    for i, line in enumerate(data):
-        if i > 4:
-            if line.split('\t')[0] != '-0.06':
-                if float(line.split('\t')[0]) < \
-                        float(data_out[-1].split('\t')[0]):
-                    data_out.append(line)
-            else:
-                data_out.append(line)
-                break
+    def __init__(self) -> None:
+        self.root = tkinter.Tk()
+        self.font = tkfont.Font(family='Arial', size=14, weight='bold')
+        self.root.rowconfigure((0, 1), weight=1)
+        self.root.columnconfigure((0, 2), weight=1)
+        tkinter.Button(
+            self.root,
+            text=f'{ico_open} Open files',
+            command=self.open_files,
+            font=self.font).grid(
+            row=0, column=0, columnspan=2, padx=10, pady=10, sticky='EWNS'
+        )
+        tkinter.Button(
+            self.root,
+            text=f'{ico_exit} Quit',
+            command=self.quit, font=self.font
+        ).grid(
+            row=0, column=2, columnspan=1, padx=10, pady=10, sticky='EWNS'
+        )
+        self.file_names: Optional[Tuple[str]] = None
+        self.plot_buttons: List[tkinter.Button] = []
+        self.write_excel_button: Optional[tkinter.Button] = None
+        self.root.mainloop()
 
-workbook = xlwt.Workbook()
-worksheet = workbook.add_sheet(f'{file_name.split("/")[-1]}_out')
+    def open_files(self) -> None:
+        self.file_names = askopenfilenames()
+        if self.plot_buttons or self.write_excel_button:
+            for button in self.plot_buttons:
+                button.grid_forget()
+            self.plot_buttons = []
+            self.write_excel_button.grid_forget()
+            self.write_excel_button = None
 
-# write output data to xls
-worksheet.write(0, 0, data[1].split('"')[1].strip('"'))
-worksheet.write(0, 1, data[1].split('"')[3].strip('"'))
-x_axis_data = []
-y_axis_data = []
+        self.make_buttons_for_files()
 
-# correction to make C from K if needed
-if 'temp' in file_name.lower():
-    correction = 273.15
-else:
-    correction = 0
+    def write_to_excel(self):
+        workbook = xlwt.Workbook()
+        for file_name in self.file_names:
+            file_data: Dict = obtain_data(file_name)
+            worksheet = workbook.add_sheet(
+                f'{file_name.split("/")[-1]}_out')
+            worksheet.write(0, 0, file_data['coord_name'])
+            worksheet.write(0, 1, file_data['value_name'])
+            for index, line in enumerate(file_data['data_out']):
+                worksheet.write(
+                    index + 2, 0,
+                    float(line.split('\t')[0])
+                )
+                worksheet.write(
+                    index + 2, 1,
+                    float(line.split('\t')[1]) - file_data['correction']
+                )
+        out_file_name: str = asksaveasfilename(
+            defaultextension=".xls", filetypes=(
+                ("Microsoft Excel file", "*.xls"),
+                ("All Files", "*.*")
+            ))
+        try:
+            workbook.save(f'{out_file_name}')
+        except FileNotFoundError:
+            pass
 
-for i, line in enumerate(data_out):
-    worksheet.write(i + 2, 0, float(line.split('\t')[0]))
-    x_axis_data.append(float(line.split('\t')[0]))
-    worksheet.write(i + 2, 1, float(line.split('\t')[1]) - correction)
-    y_axis_data.append(float(line.split('\t')[1]) - correction)
+    def make_buttons_for_files(self):
+        row = 0
+        for index, file_name in enumerate(self.file_names):
+            if index % 3 == 0:
+                row += 1
+            button = tkinter.Button(
+                self.root,
+                text=f'{ico_chart} Plot {file_name.split("/")[-1]}',
+                command=partial(plot_file, file_name),
+                font=self.font
+            )
+            self.plot_buttons.append(button)
+            button.grid(
+                row=row, column=index % 3, columnspan=1,
+                padx=10, pady=10,
+                sticky='EWNS'
+            )
 
-# write raw data to second sheet of xls
-worksheet2 = workbook.add_sheet(f'{file_name.split("/")[-1]}_raw')
-worksheet2.write(0, 0, data[1].split('"')[1].strip('"'))
-worksheet2.write(0, 1, data[1].split('"')[3].strip('"'))
-for i, line in enumerate(data):
-    if 4 < i < len(data) - 1:
-        worksheet2.write(i - 3, 0, float(line.split('\t')[0]))
-        worksheet2.write(i - 3, 1, float(line.split('\t')[1]) - 273.15)
+        self.write_excel_button = tkinter.Button(
+            self.root,
+            text=f'{ico_save} Save all to xls file',
+            command=self.write_to_excel, font=self.font
+        )
+        self.write_excel_button.grid(
+            row=row + 1, column=0, columnspan=3,
+            padx=10, pady=10, sticky='EWNS'
+        )
+        self.root.rowconfigure((0, row), weight=1)
 
-# write txt file with output data
-with open(f'{file_name}_out.txt', 'w') as out_file:
-    for line in data_out:
-        out_file.write(line)
+    def quit(self):
+        self.root.destroy()
 
-# saving xls file
-workbook.save(f'{file_name}_out.xls')
 
-# plotting output data
-plot(x_axis_data, y_axis_data)
+app = App()
